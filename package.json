@@ -1,0 +1,23 @@
+{
+  "name": "maxq-payments-api",
+  "version": "1.0.0",
+  "description": "A fictional payments API and the Postman tests that check its money movements, state changes and failure handling.",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node scripts/run-tests.js",
+    "test:eur": "node scripts/run-tests.js --env local-eur",
+    "test:isolation": "node scripts/check-isolation.js",
+    "test:defects": "node scripts/check-defects.js",
+    "test:guard": "node scripts/check-guard.js"
+  },
+  "dependencies": {
+    "express": "5.3.0"
+  },
+  "devDependencies": {
+    "newman": "6.2.3"
+  }
+}
