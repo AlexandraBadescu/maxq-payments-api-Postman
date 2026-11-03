@@ -49,6 +49,8 @@ So scenarios 07 and 08 wait for the service to report the outcome `duplicate`, a
 
 ### Check the money as well as the status
 
+A payment can say `authorised` and still belong to the wrong order or be in the wrong currency, so the setup step that authorises a payment checks its order, amount and currency as well as its status. A second review found that I hadn't. Two new seeded bugs prove the check works.
+
 A payment can say `captured` and still hold the wrong amount. Payment checks compare the status and balances, and scenario 01 also compares the amounts in the history with the money that moved.
 
 I don't check the total number of history entries, because the rules don't promise one. A check like that would fail on harmless changes.
@@ -69,7 +71,7 @@ Scenario 21 sends every kind of invalid order I could think of: a `null` item, q
 
 ### Stop a scenario at the first real problem
 
-If capture fails, every later step in that scenario fails too, and the report fills with noise. Setup steps and waits are marked as guards. If one fails, the rest of that scenario is skipped, so the report points at the cause.
+If capture fails, every later step in that scenario fails too, and the report fills with noise. Setup steps and waits are marked as guards. If one fails, the rest of that scenario is skipped, so the report points at the cause. The wait for a notification now works the same way: if it finishes with the wrong outcome, the rest of that scenario is skipped. Before, the later checks still ran and added failures that all came from the same cause.
 
 **The cost:** a run can show fewer failures than exist. Fixing the first one may reveal another.
 
@@ -103,13 +105,15 @@ The requests don't change between GBP and EUR. Each environment file supplies th
 
 These tests create and refund payments. Before every request, the collection checks that `baseUrl` is `localhost` or `127.0.0.1`. If it isn't, the request is skipped and the run fails.
 
-`npm run test:guard` proves this by pointing the collection at another address and confirming that no requests arrive and the run fails.
+`npm run test:guard` proves this by pointing the collection at another spelling of the local address (`127.1`) and confirming that no requests arrive and the run fails. The temporary service it uses listens on `127.0.0.1` only. My first version listened on every interface, which a review pointed out; the review suggested `127.0.0.2` instead, but macOS has no such address by default, so I used a name that works everywhere.
+
+The guard checks the host name and nothing else. It doesn't protect against a redirect, or against a different service that happens to be listening on an allowed local address. Treat it as a safety net against pointing the tests at the wrong environment, not as a security boundary.
 
 That check found a bug in my first version. The guard did block every request, but the run finished with no failures, so it looked like a pass. It now records a failed test as well, and the test runner treats a run with no checks as a failure.
 
 ## Testing the tests
 
-A passing suite only means something if it would fail when the product is wrong. `npm run test:defects` starts the service with one deliberate bug at a time and checks that the right scenario fails. The results are in [defect-results.md](defect-results.md).
+A passing suite only means something if it would fail when the product is wrong. `npm run test:defects` starts the service with one deliberate bug at a time and checks that the right scenario fails. A failing setup step doesn't count: the scenario has to fail in one of its own checks, because a broken setup would fail the scenario whatever the bug was. The two exceptions are bugs the setup is meant to catch, and the results show the first check that failed in each scenario. The results are in [defect-results.md](defect-results.md).
 
 There's a trap in that, and I fell into it: I wrote the first 14 bugs alongside the tests, so of course the tests caught them. When someone else seeded 10 bugs of their own, this suite caught 3 of them and the Playwright version caught 1. The missing ones are now scenarios 17 to 24 and a fix to 14, and all of those bugs are in the list. The lesson I took from it is that the score against bugs I chose is a floor on my confidence, not a measure of it. I'd want a colleague to keep adding bugs I didn't think of.
 

@@ -38,10 +38,12 @@ class PaymentService {
     const status = paymentMethod === 'pm_declined' ? 'declined' : 'authorised';
     const payment = {
       id: randomUUID(),
-      orderId: order.id,
+      orderId: this.hasDefect('payment-wrong-order') ? randomUUID() : order.id,
       customerId: order.customerId,
       status,
-      currency: order.currency,
+      currency: this.hasDefect('payment-wrong-currency')
+        ? (order.currency === 'GBP' ? 'EUR' : 'GBP')
+        : order.currency,
       amountMinor: order.totalMinor,
       capturedMinor: 0,
       refundedMinor: 0,

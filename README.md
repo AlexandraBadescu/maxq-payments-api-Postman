@@ -14,7 +14,7 @@ I wanted to show how I test for those problems, using something anyone can run. 
 | Checks | 345 in a full run, about 13 seconds |
 | Currencies | GBP and EUR, using the same requests |
 | Repeat runs | 10 out of 10 passed in a row, alternating GBP and EUR (`npm run test:repeat`, also run in CI) |
-| Deliberate bugs | 30 out of 30 caught by the intended scenario ([results](docs/defect-results.md)) |
+| Deliberate bugs | 32 out of 32 caught by the intended scenario ([results](docs/defect-results.md)) |
 | Safety guard | Pointed at another host, 0 requests were sent there |
 
 What this does and doesn't prove is in [Limits](#limits).
@@ -46,24 +46,46 @@ Step 5 matters most. Without it, the final check could pass only because the dup
 
 ## Run it yourself
 
-You need [Node.js](https://nodejs.org) 20 or later.
+You'll need Node.js 20 or later. There are no external services, paid accounts or real credentials involved.
 
 ```bash
 npm ci
-npm test                 # the full suite in GBP
-npm run test:eur         # the same suite in EUR
-npm run test:isolation   # each scenario on its own
-npm run test:guard       # proves the safety guard works
-npm run test:defects     # runs the suite against each deliberate bug
-npm run test:repeat      # 10 full runs in a row, alternating GBP and EUR
-npm run audit            # known vulnerabilities in the service's own dependencies
+npm test
 ```
 
-`npm test` starts its own copy of the service, and writes a JUnit report to `reports/`.
+`npm test` starts its own copy of the service, runs the whole collection in GBP with Newman, and writes a JUnit report to `reports/`. The other checks are separate commands:
 
-**To use Postman:** run `npm start`, import the collection and an environment file, then use the Collection Runner. A single Send won't follow the polling steps.
+```bash
+npm run test:eur        # the same suite in EUR
+npm run test:isolation  # each scenario on its own
+npm run test:guard      # proves the safety guard works
+npm run test:defects    # runs the suite against each deliberate bug
+npm run test:repeat     # 10 full runs in a row, alternating GBP and EUR
+npm run audit           # known vulnerabilities in the service's own dependencies
+```
 
-`npm start` listens on `127.0.0.1` only, and turns on the simulator routes that Postman needs. The simulator can change any payment without logging in, so it is off unless you ask for it: `node src/server.js` on its own starts the API without it, and `ENABLE_SIMULATOR=true` or `--simulator` turns it on. `HOST` and `PORT` change where it listens.
+To run the API and look at it yourself:
+
+```bash
+npm start
+```
+
+Then visit `http://127.0.0.1:4010/health`.
+
+The server listens on your own machine only, and keeps its state in memory, so restarting it clears everything. `npm start` also turns on a test-only set of routes under `/simulator`, which let the tests send the provider's notifications (capture and refund results) on demand instead of waiting for them. Those routes can change any payment without logging in, so they are off unless you ask for them: `node src/server.js` on its own starts the API without them, and `ENABLE_SIMULATOR=true` or `--simulator` turns them on. `HOST` and `PORT` change where it listens.
+
+### Prefer Postman?
+
+Start the service with `npm start`, then import `collections/payments.postman_collection.json` and one file from `environments/` (`local-gbp` or `local-eur`) into Postman. Both point at `http://localhost:4010`. Use the Collection Runner, not Send: a single Send won't follow the polling steps that wait for a notification.
+
+You can also run it with Newman, which `npm ci` installs:
+
+```bash
+npx newman run collections/payments.postman_collection.json \
+  -e environments/local-gbp.postman_environment.json
+```
+
+I ran this against a service started with `npm start` and it passed. The checks in `npm test` run the same collection, but through a small Node script that starts a fresh service for each run and fails if no checks ran at all, so they are the ones I would trust more. The GitHub Actions workflow runs those scripts, not the plain Newman command.
 
 ## What's in here
 
@@ -80,7 +102,7 @@ npm run audit            # known vulnerabilities in the service's own dependenci
 ## Limits
 
 - **This is a simulation.** It tests a demo service that I control, and it doesn't show compatibility with any real payment provider.
-- **The bugs are ones I chose.** Catching all 30 shows the suite detects those failures, not every possible bug. The first 14 were written alongside the first version of the tests. The other 16 were added after an outside review that seeded bugs of its own and found most of them uncaught, so they are a fairer test than the first 14 were.
+- **The bugs are ones I chose.** Catching all 32 shows the suite detects those failures, not every possible bug. The first 14 were written alongside the first version of the tests. The next 16 were added after an outside review that seeded bugs of its own and found most of them uncaught, so they are a fairer test than the first 14 were. The last two came from a second review.
 - **Scale isn't tested.** The service is in-memory and has no performance, load or concurrency testing.
 - **The security checks are narrow.** They cover authentication, access to other customers' payments and orders, and input validation. This isn't a security review.
 - **Newman is the tested runner.** The full results above come from Newman, not from the Postman app.
