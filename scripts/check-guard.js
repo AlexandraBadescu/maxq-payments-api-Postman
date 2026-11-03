@@ -9,7 +9,7 @@ const { ROOT } = require('./lib/runSuite');
 
 async function main() {
   let requestsReceived = 0;
-  const app = createApp();
+  const app = createApp({ enableSimulator: true });
   const http = require('node:http');
   const server = http.createServer((req, res) => {
     requestsReceived += 1;

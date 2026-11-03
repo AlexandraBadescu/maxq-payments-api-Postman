@@ -22,6 +22,22 @@ const DEFECTS = Object.freeze({
   'refunded-total-wrong': 'A partial refund is recorded as a full refund',
   'failed-refund-keeps-reservation': 'A failed refund never releases the reserved balance',
   'history-entry-missing': 'A settled refund is missing from the transaction history',
+  'reservation-ignored-in-limit': 'A refund limit ignores refunds already in progress',
+  'capture-history-duplicated': 'A settled capture appears twice in the transaction history',
+  'order-ownership-not-checked': "A customer can pay for another customer's order",
+  'double-capture-allowed': 'A payment that is already captured, or being captured, can be captured again',
+  'login-accepts-any-password': 'Login accepts any password',
+  'declined-blocks-retry': 'A declined attempt blocks a retry on the same order',
+  'quantity-not-validated': 'An order quantity of zero or below is accepted',
+  'quantity-unbounded': 'An order quantity has no upper limit',
+  'null-item-crashes': 'An order item that is null crashes the service',
+  'email-not-unique': 'The same email address can register twice',
+  'email-case-sensitive': 'Email addresses that differ only in case register as different customers',
+  'weak-password-allowed': 'A one-character password is accepted',
+  'refund-reapplied-by-new-event': 'A second event with a new ID settles the same refund again',
+  'refunded-payment-refundable': 'A fully refunded payment gives a too-large error, not an invalid-state one',
+  'rejected-event-consumes-id': 'A rejected event can never be applied when the provider sends it again',
+  'ownership-leak-via-message': "Another customer's payment gets a different 404 message",
 });
 
 function loadDefect(name) {

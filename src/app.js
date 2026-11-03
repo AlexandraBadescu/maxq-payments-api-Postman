@@ -11,13 +11,23 @@ const CATALOGUE = Object.freeze({
 });
 const EVENT_TYPES = ['capture.succeeded', 'capture.failed', 'refund.succeeded', 'refund.failed'];
 const MAX_EVENT_DELAY_MS = 5000;
+const MAX_ITEMS_PER_ORDER = 50;
+const MAX_QUANTITY_PER_ITEM = 1000;
+const MIN_PASSWORD_LENGTH = 8;
 
 function hashPassword(password, salt = randomBytes(16)) {
   return { salt, hash: scryptSync(password, salt, 32) };
 }
 
+// Safe integers only: a value past Number.MAX_SAFE_INTEGER cannot be added up exactly.
 function isPositiveInteger(value) {
-  return Number.isInteger(value) && value > 0;
+  return Number.isSafeInteger(value) && value > 0;
+}
+
+// Email addresses are matched without regard to case, so "A@x.test" and
+// "a@x.test" are the same customer.
+function normaliseEmail(email) {
+  return email.trim().toLowerCase();
 }
 
 function isNonEmptyString(value) {
@@ -30,7 +40,7 @@ function badRequest(message) {
 
 function createApp({
   captureTimeoutMs = 2000,
-  enableSimulator = true,
+  enableSimulator = false,
   seededDefect = undefined,
 } = {}) {
   const hasDefect = loadDefect(seededDefect);
@@ -63,33 +73,45 @@ function createApp({
     const payment = paymentService.find(req.params.id);
     const visible =
       payment && (payment.customerId === req.customerId || hasDefect('ownership-not-checked'));
-    if (!visible) throw new ApiError(404, 'not_found', 'Payment not found.');
+    if (!visible) {
+      const message =
+        payment && hasDefect('ownership-leak-via-message')
+          ? 'Payment belongs to another customer.'
+          : 'Payment not found.';
+      throw new ApiError(404, 'not_found', message);
+    }
     req.payment = payment;
     next();
   }
 
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
+  const emailKey = (email) => (hasDefect('email-case-sensitive') ? email : normaliseEmail(email));
+
   app.post('/customers', (req, res) => {
     const { name, email, password } = req.body ?? {};
     if (![name, email, password].every(isNonEmptyString)) {
       throw badRequest('name, email and password are required.');
     }
-    if (customersByEmail.has(email)) {
+    if (password.length < MIN_PASSWORD_LENGTH && !hasDefect('weak-password-allowed')) {
+      throw badRequest(`password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+    }
+    if (customersByEmail.has(emailKey(email)) && !hasDefect('email-not-unique')) {
       throw new ApiError(409, 'email_taken', 'That email address is already registered.');
     }
     const customer = { id: randomUUID(), name, email, ...hashPassword(password) };
-    customersByEmail.set(email, customer);
+    customersByEmail.set(emailKey(email), customer);
     res.status(201).json({ id: customer.id, name, email });
   });
 
   app.post('/sessions', (req, res) => {
     const { email, password } = req.body ?? {};
-    const customer = customersByEmail.get(email);
+    const customer = isNonEmptyString(email) ? customersByEmail.get(emailKey(email)) : undefined;
     const valid =
       customer &&
-      isNonEmptyString(password) &&
-      timingSafeEqual(customer.hash, hashPassword(password, customer.salt).hash);
+      (hasDefect('login-accepts-any-password') ||
+        (isNonEmptyString(password) &&
+          timingSafeEqual(customer.hash, hashPassword(password, customer.salt).hash)));
     if (!valid) throw new ApiError(401, 'invalid_credentials', 'Email or password is incorrect.');
 
     const token = randomUUID();
@@ -101,12 +123,30 @@ function createApp({
     const { items, currency } = req.body ?? {};
     if (!['GBP', 'EUR'].includes(currency)) throw badRequest('currency must be GBP or EUR.');
     if (!Array.isArray(items) || items.length === 0) throw badRequest('items are required.');
+    if (items.length > MAX_ITEMS_PER_ORDER) {
+      throw badRequest(`an order can have at most ${MAX_ITEMS_PER_ORDER} items.`);
+    }
 
     let totalMinor = 0;
-    for (const { sku, quantity } of items) {
+    for (const item of items) {
+      if (!hasDefect('null-item-crashes') && (item === null || typeof item !== 'object')) {
+        throw badRequest('each item must be an object with a sku and a quantity.');
+      }
+      const { sku, quantity } = item;
       if (!Object.hasOwn(CATALOGUE, sku ?? '')) throw badRequest(`Unknown sku "${sku}".`);
-      if (!isPositiveInteger(quantity)) throw badRequest('quantity must be a positive integer.');
+
+      const quantityOk = hasDefect('quantity-not-validated')
+        ? true
+        : hasDefect('quantity-unbounded')
+          ? Number.isInteger(quantity) && quantity > 0
+          : isPositiveInteger(quantity) && quantity <= MAX_QUANTITY_PER_ITEM;
+      if (!quantityOk) {
+        throw badRequest(`quantity must be a whole number from 1 to ${MAX_QUANTITY_PER_ITEM}.`);
+      }
       totalMinor += CATALOGUE[sku][currency] * quantity;
+    }
+    if (!Number.isSafeInteger(totalMinor) && !hasDefect('quantity-unbounded')) {
+      throw badRequest('the order total is too large.');
     }
 
     const order = {
@@ -128,7 +168,10 @@ function createApp({
     }
     const order = orders.get(orderId);
     const visible =
-      order && (order.customerId === req.customerId || hasDefect('ownership-not-checked'));
+      order &&
+      (order.customerId === req.customerId ||
+        hasDefect('ownership-not-checked') ||
+        hasDefect('order-ownership-not-checked'));
     if (!visible) throw new ApiError(404, 'not_found', 'Order not found.');
 
     res.status(201).json(publicPayment(paymentService.authorise(order, paymentMethod)));

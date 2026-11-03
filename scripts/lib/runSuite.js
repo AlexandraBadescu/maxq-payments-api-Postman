@@ -17,7 +17,7 @@ function listScenarios() {
 
 /** Starts a fresh service on a free port, runs the collection, then stops it. */
 async function runSuite({ env = 'local-gbp', folder, seededDefect, reporters = [], reporter } = {}) {
-  const app = createApp({ seededDefect });
+  const app = createApp({ seededDefect, enableSimulator: true });
   const server = await new Promise((resolve, reject) => {
     const listening = app.listen(0, '127.0.0.1', (error) =>
       error ? reject(error) : resolve(listening),
