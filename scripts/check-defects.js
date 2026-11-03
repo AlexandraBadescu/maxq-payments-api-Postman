@@ -23,6 +23,22 @@ const EXPECTED = {
   'refunded-total-wrong': '01',
   'failed-refund-keeps-reservation': '06',
   'history-entry-missing': '01',
+  'reservation-ignored-in-limit': '03',
+  'capture-history-duplicated': '07',
+  'order-ownership-not-checked': '23',
+  'double-capture-allowed': '17',
+  'login-accepts-any-password': '15',
+  'declined-blocks-retry': '14',
+  'quantity-not-validated': '21',
+  'quantity-unbounded': '21',
+  'null-item-crashes': '21',
+  'email-not-unique': '22',
+  'email-case-sensitive': '22',
+  'weak-password-allowed': '22',
+  'refund-reapplied-by-new-event': '19',
+  'refunded-payment-refundable': '18',
+  'rejected-event-consumes-id': '20',
+  'ownership-leak-via-message': '24',
 };
 
 async function main() {

@@ -28,7 +28,8 @@ class PaymentService {
 
   authorise(order, paymentMethod) {
     const alreadyPaid = [...this.payments.values()].some(
-      (p) => p.orderId === order.id && p.status !== 'declined',
+      (p) =>
+        p.orderId === order.id && (p.status !== 'declined' || this.hasDefect('declined-blocks-retry')),
     );
     if (alreadyPaid && !this.hasDefect('double-payment-allowed')) {
       throw new ApiError(409, 'order_already_paid', 'This order already has a payment.');
@@ -56,7 +57,9 @@ class PaymentService {
   requestCapture(payment) {
     const capturable =
       payment.status === 'authorised' ||
-      (payment.status === 'declined' && this.hasDefect('declined-payment-captured'));
+      (payment.status === 'declined' && this.hasDefect('declined-payment-captured')) ||
+      (['capture_pending', 'captured'].includes(payment.status) &&
+        this.hasDefect('double-capture-allowed'));
     if (!capturable) {
       throw new ApiError(409, 'invalid_state', `A ${payment.status} payment cannot be captured.`);
     }
@@ -82,18 +85,21 @@ class PaymentService {
   }
 
   requestRefund(payment, amountMinor) {
-    const refundable = ['captured', 'partially_refunded', 'refunded'].includes(payment.status);
+    // A fully refunded payment has nothing left to refund, so it is an invalid state
+    // like any other, not a "too large" amount (docs/api-behaviour.md).
+    const refundableStatuses = ['captured', 'partially_refunded'];
+    if (this.hasDefect('refunded-payment-refundable')) refundableStatuses.push('refunded');
+    const refundable = refundableStatuses.includes(payment.status);
     if (!refundable && !this.hasDefect('refund-before-capture-allowed')) {
       throw new ApiError(409, 'invalid_state', `A ${payment.status} payment cannot be refunded.`);
     }
     const limitEnforced =
       !this.hasDefect('refund-limit-ignored') && !this.hasDefect('refund-before-capture-allowed');
-    if (limitEnforced && amountMinor > refundableMinor(payment)) {
-      throw new ApiError(
-        422,
-        'refund_exceeds_balance',
-        `Only ${refundableMinor(payment)} can be refunded.`,
-      );
+    const limit = this.hasDefect('reservation-ignored-in-limit')
+      ? payment.capturedMinor - payment.refundedMinor
+      : refundableMinor(payment);
+    if (limitEnforced && amountMinor > limit) {
+      throw new ApiError(422, 'refund_exceeds_balance', `Only ${limit} can be refunded.`);
     }
 
     const refund = { id: randomUUID(), amountMinor, status: 'pending' };
@@ -112,7 +118,6 @@ class PaymentService {
     if (this.processedEventIds.has(event.eventId) && !reapply) {
       return { status: 'duplicate', reason: 'event_already_processed' };
     }
-    this.processedEventIds.add(event.eventId);
 
     const payment = this.payments.get(event.paymentId);
     const handlers = {
@@ -121,7 +126,14 @@ class PaymentService {
       'refund.succeeded': () => this.#refundSucceeded(payment, event, reapply),
       'refund.failed': () => this.#refundFailed(payment, event),
     };
-    return handlers[event.type]();
+    const outcome = handlers[event.type]();
+
+    // Only an event that took effect is remembered. A rejected one changed nothing, so
+    // if the provider sends it again once the payment is ready for it, it can still apply.
+    if (outcome.status === 'applied' || this.hasDefect('rejected-event-consumes-id')) {
+      this.processedEventIds.add(event.eventId);
+    }
+    return outcome;
   }
 
   #captureSucceeded(payment, event, reapply) {
@@ -135,6 +147,12 @@ class PaymentService {
       amountMinor: payment.amountMinor,
       eventId: event.eventId,
     });
+    if (this.hasDefect('capture-history-duplicated')) {
+      this.#record(payment, 'capture_settled', {
+        amountMinor: payment.amountMinor,
+        eventId: event.eventId,
+      });
+    }
     return applied();
   }
 
@@ -151,7 +169,8 @@ class PaymentService {
   #refundSucceeded(payment, event, reapply) {
     const refund = payment.refunds.find((r) => r.id === event.refundId);
     if (!refund) return rejected('unknown_refund');
-    if (refund.status !== 'pending' && !reapply) return rejected('refund_not_pending');
+    const settleAgain = reapply || this.hasDefect('refund-reapplied-by-new-event');
+    if (refund.status !== 'pending' && !settleAgain) return rejected('refund_not_pending');
 
     if (refund.status === 'pending') payment.pendingRefundMinor -= refund.amountMinor;
     refund.status = 'succeeded';

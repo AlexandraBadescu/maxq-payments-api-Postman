@@ -5651,7 +5651,7 @@
     },
     {
       "name": "14 An order can only be paid once",
-      "description": "Protects the customer from being charged twice.",
+      "description": "A paid order cannot be paid again, but a declined attempt does not stop the customer trying again.",
       "item": [
         {
           "id": "05f196ed-dcae-45bd-86e7-61066dd87ce1",
@@ -5867,6 +5867,133 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"paymentMethod\": \"pm_success\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "536bb575-8184-4592-af94-ca355dab9213",
+          "name": "Create a second order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'order total is correct for ' + pm.variables.get('currency'), () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().totalMinor).to.equal(Number(pm.variables.get('expectedOrderTotalMinor')));",
+                  "});",
+                  "pm.collectionVariables.set('orderId', pm.response.json().id);",
+                  "pm.collectionVariables.set('orderTotalMinor', pm.response.json().totalMinor);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currency\": \"{{currency}}\",\n  \"items\": [\n    {\n      \"sku\": \"MAXQ-BOX-S\",\n      \"quantity\": 2\n    },\n    {\n      \"sku\": \"MAXQ-BOX-L\",\n      \"quantity\": 1\n    }\n  ]\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "403f21e1-6a62-4c6c-aa6a-a00b502cc338",
+          "name": "Authorise the second order with a declined payment method",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('The response says the payment was declined', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().status).to.equal('declined');",
+                  "});",
+                  "pm.collectionVariables.set('paymentId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"paymentMethod\": \"pm_declined\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "5228b248-5365-4ab4-a931-832420b903f5",
+          "name": "Retry the second order with a working payment method",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('A declined attempt does not block a retry', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "});",
+                  "helpers.expectSchema(pm, 'payment');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"orderId\": \"{{orderId}}\", \"paymentMethod\": \"pm_success\" }"
             }
           },
           "response": []
@@ -6286,6 +6413,156 @@
                   "type": "string"
                 }
               ]
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "f4eff74a-8f23-4beb-99a8-f2059d3aa8fd",
+          "name": "Read the history with no token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 401, 'unauthenticated');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}",
+                "history"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "8e31fb05-fe8d-461c-b3b3-e8ee3270a97b",
+          "name": "Request a capture with no token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 401, 'unauthenticated');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}/capture",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}",
+                "capture"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "bdac1be6-bee9-430a-bc85-b69bb7938632",
+          "name": "Create a payment with no token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 401, 'unauthenticated');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"orderId\": \"{{orderId}}\", \"paymentMethod\": \"pm_success\" }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "bbf098cd-8fd9-487e-84ba-152b688f96d0",
+          "name": "Create an order with no token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 401, 'unauthenticated');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"currency\": \"{{currency}}\", \"items\": [ { \"sku\": \"MAXQ-BOX-S\", \"quantity\": 1 } ] }"
             }
           },
           "response": []
@@ -6890,6 +7167,47 @@
           "response": []
         },
         {
+          "id": "a5fc89e8-caf2-45bd-944b-8f7ddab3c014",
+          "name": "Request a capture as the other customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 404, 'not_found');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}/capture",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}",
+                "capture"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "id": "261663fa-7175-4ef9-b10a-402c8a1f9fd8",
           "name": "Check the owner sees no refund",
           "event": [
@@ -6915,6 +7233,3800 @@
               "path": [
                 "payments",
                 "{{paymentId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "17 A payment cannot be captured twice",
+      "description": "Asking to capture a payment that is already being captured, or already captured, must not take the money again.",
+      "item": [
+        {
+          "id": "2ce82d0b-5127-4fed-96c2-b00b0b08d3a1",
+          "name": "Setup: register customer",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "['token', 'orderId', 'orderTotalMinor', 'paymentId', 'refundId', 'eventId', 'deliveryId', 'pollAttempt']",
+                  "  .forEach((key) => pm.collectionVariables.unset(key));",
+                  "pm.collectionVariables.set('customerEmail', 'customer-' + pm.variables.replaceIn('{{$guid}}') + '@example.test');",
+                  "pm.collectionVariables.set('customerPassword', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'customer was created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Customer\",\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "04c743eb-300b-4040-946a-1064dcc90a24",
+          "name": "Setup: log in",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'session was created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('token', pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "57baa376-fe8f-4e32-aa4e-89161de2e07d",
+          "name": "Setup: create order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'order total is correct for ' + pm.variables.get('currency'), () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().totalMinor).to.equal(Number(pm.variables.get('expectedOrderTotalMinor')));",
+                  "});",
+                  "pm.collectionVariables.set('orderId', pm.response.json().id);",
+                  "pm.collectionVariables.set('orderTotalMinor', pm.response.json().totalMinor);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currency\": \"{{currency}}\",\n  \"items\": [\n    {\n      \"sku\": \"MAXQ-BOX-S\",\n      \"quantity\": 2\n    },\n    {\n      \"sku\": \"MAXQ-BOX-L\",\n      \"quantity\": 1\n    }\n  ]\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "57f2136e-606c-42e2-9c21-fa3e9c4894c4",
+          "name": "Setup: authorise payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "});",
+                  "pm.collectionVariables.set('paymentId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"paymentMethod\": \"pm_success\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "3f61b0f8-87b9-4df1-88ef-741ffcece54e",
+          "name": "Request capture",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'capture was accepted but not yet settled', () => {",
+                  "  pm.response.to.have.status(202);",
+                  "  pm.expect(pm.response.json().status).to.equal('capture_pending');",
+                  "  pm.expect(pm.response.json().capturedMinor).to.equal(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}/capture",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}",
+                "capture"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "9299e744-f8e4-4fd0-9c76-c23f06ad87a8",
+          "name": "Capture again while the first capture is pending",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 409, 'invalid_state');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}/capture",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}",
+                "capture"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "39ba9d7e-7d53-4807-a883-afeb938801a4",
+          "name": "Simulate capture notification",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('eventId', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'simulator queued the notification', () => pm.response.to.have.status(202));",
+                  "pm.collectionVariables.set('deliveryId', pm.response.json().deliveryId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/simulator/payment-events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "simulator",
+                "payment-events"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"eventId\": \"{{eventId}}\", \"type\": \"capture.succeeded\", \"paymentId\": \"{{paymentId}}\" }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "bb23bb83-a64f-488c-abea-584e90fcf764",
+          "name": "Wait until payment is captured",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.waitForPayment(pm, 'captured');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "ad9a5101-a7a6-4f09-acef-bb63b4ff4a52",
+          "name": "Capture an already captured payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 409, 'invalid_state');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}/capture",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}",
+                "capture"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "9143062b-4439-420c-9d58-7de710deb4e1",
+          "name": "Check money was captured once",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const { total, partial } = helpers.money(pm);",
+                  "helpers.expectPayment(pm, { status: 'captured', capturedMinor: total, refundableMinor: total });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "40c6921b-05fc-4096-96d4-73dd769bc673",
+          "name": "Check one settlement in the history",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('The history shows exactly one settled capture', () => {",
+                  "  const settled = pm.response.json().entries.filter((entry) => entry.type === 'capture_settled');",
+                  "  pm.expect(settled).to.have.lengthOf(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}",
+                "history"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "18 A fully refunded payment cannot be refunded again",
+      "description": "There is nothing left to return, so the payment is in the wrong state for a refund (not \"amount too large\").",
+      "item": [
+        {
+          "id": "f9dae45e-8b22-41b9-8d7f-26bfa1e93b2e",
+          "name": "Setup: register customer",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "['token', 'orderId', 'orderTotalMinor', 'paymentId', 'refundId', 'eventId', 'deliveryId', 'pollAttempt']",
+                  "  .forEach((key) => pm.collectionVariables.unset(key));",
+                  "pm.collectionVariables.set('customerEmail', 'customer-' + pm.variables.replaceIn('{{$guid}}') + '@example.test');",
+                  "pm.collectionVariables.set('customerPassword', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'customer was created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Customer\",\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "2d047f65-62b0-4925-b1ba-710eb4d4a9b5",
+          "name": "Setup: log in",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'session was created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('token', pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "05e2f279-7617-4579-b81c-fb89c31951b2",
+          "name": "Setup: create order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'order total is correct for ' + pm.variables.get('currency'), () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().totalMinor).to.equal(Number(pm.variables.get('expectedOrderTotalMinor')));",
+                  "});",
+                  "pm.collectionVariables.set('orderId', pm.response.json().id);",
+                  "pm.collectionVariables.set('orderTotalMinor', pm.response.json().totalMinor);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currency\": \"{{currency}}\",\n  \"items\": [\n    {\n      \"sku\": \"MAXQ-BOX-S\",\n      \"quantity\": 2\n    },\n    {\n      \"sku\": \"MAXQ-BOX-L\",\n      \"quantity\": 1\n    }\n  ]\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "65f9b2ac-5a93-4b8c-acc9-1cfc3851061e",
+          "name": "Setup: authorise payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "});",
+                  "pm.collectionVariables.set('paymentId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"paymentMethod\": \"pm_success\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "ea9d5ed7-c7c0-4706-8440-27eff42f7d66",
+          "name": "Request capture",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'capture was accepted but not yet settled', () => {",
+                  "  pm.response.to.have.status(202);",
+                  "  pm.expect(pm.response.json().status).to.equal('capture_pending');",
+                  "  pm.expect(pm.response.json().capturedMinor).to.equal(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}/capture",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}",
+                "capture"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "e71f8883-149b-4285-8ccd-8cfaeb45890d",
+          "name": "Simulate capture notification",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('eventId', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'simulator queued the notification', () => pm.response.to.have.status(202));",
+                  "pm.collectionVariables.set('deliveryId', pm.response.json().deliveryId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/simulator/payment-events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "simulator",
+                "payment-events"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"type\": \"capture.succeeded\",\n  \"paymentId\": \"{{paymentId}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "83ee54b1-c782-4c12-97d1-e762f97eb9ea",
+          "name": "Wait until payment is captured",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.waitForPayment(pm, 'captured');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "08141c74-4757-4659-9b8a-cee52342d5f3",
+          "name": "Request a refund for the whole amount",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const { total, partial } = helpers.money(pm);",
+                  "pm.collectionVariables.set('refundAmountMinor', total);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'refund was accepted and is pending', () => {",
+                  "  pm.response.to.have.status(202);",
+                  "  pm.expect(pm.response.json().status).to.equal('pending');",
+                  "});",
+                  "pm.collectionVariables.set('refundId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}/refunds",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}",
+                "refunds"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"amountMinor\": {{refundAmountMinor}} }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "d478b258-142b-40f5-9318-27eb0df0cd25",
+          "name": "Simulate refund notification",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('eventId', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'simulator queued the notification', () => pm.response.to.have.status(202));",
+                  "pm.collectionVariables.set('deliveryId', pm.response.json().deliveryId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/simulator/payment-events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "simulator",
+                "payment-events"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"eventId\": \"{{eventId}}\", \"type\": \"refund.succeeded\", \"paymentId\": \"{{paymentId}}\", \"refundId\": \"{{refundId}}\" }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "687133bd-e1e9-49b5-8591-5575d6c9bd49",
+          "name": "Wait until payment is refunded",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.waitForPayment(pm, 'refunded');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "539b023b-7bc9-4cfb-8d10-2dcfe1f6977a",
+          "name": "Refund a fully refunded payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 409, 'invalid_state');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}/refunds",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}",
+                "refunds"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"amountMinor\": 1 }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "a67d773f-33ba-4e1d-a628-c28a0bb80810",
+          "name": "Check nothing changed",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const { total, partial } = helpers.money(pm);",
+                  "helpers.expectPayment(pm, { status: 'refunded', refundedMinor: total, refundableMinor: 0, pendingRefundMinor: 0 });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "19 A new event ID cannot settle the same refund twice",
+      "description": "A repeated notification is usually caught by its event ID. Here the provider sends the same refund result under a different ID, and the refund must still settle only once.",
+      "item": [
+        {
+          "id": "b7d35bd9-b54f-4f15-a57f-3d94f49aad70",
+          "name": "Setup: register customer",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "['token', 'orderId', 'orderTotalMinor', 'paymentId', 'refundId', 'eventId', 'deliveryId', 'pollAttempt']",
+                  "  .forEach((key) => pm.collectionVariables.unset(key));",
+                  "pm.collectionVariables.set('customerEmail', 'customer-' + pm.variables.replaceIn('{{$guid}}') + '@example.test');",
+                  "pm.collectionVariables.set('customerPassword', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'customer was created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Customer\",\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "2d2cf927-070d-4d8e-b239-0fdaf86eb586",
+          "name": "Setup: log in",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'session was created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('token', pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "5fb591c4-bfa7-4477-a593-25ea9a9b1abc",
+          "name": "Setup: create order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'order total is correct for ' + pm.variables.get('currency'), () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().totalMinor).to.equal(Number(pm.variables.get('expectedOrderTotalMinor')));",
+                  "});",
+                  "pm.collectionVariables.set('orderId', pm.response.json().id);",
+                  "pm.collectionVariables.set('orderTotalMinor', pm.response.json().totalMinor);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currency\": \"{{currency}}\",\n  \"items\": [\n    {\n      \"sku\": \"MAXQ-BOX-S\",\n      \"quantity\": 2\n    },\n    {\n      \"sku\": \"MAXQ-BOX-L\",\n      \"quantity\": 1\n    }\n  ]\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "3ace9f21-efe6-47c0-9fed-ec09f47df351",
+          "name": "Setup: authorise payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "});",
+                  "pm.collectionVariables.set('paymentId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"paymentMethod\": \"pm_success\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "29fec6fe-4703-4496-90e1-14ff7a684a85",
+          "name": "Request capture",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'capture was accepted but not yet settled', () => {",
+                  "  pm.response.to.have.status(202);",
+                  "  pm.expect(pm.response.json().status).to.equal('capture_pending');",
+                  "  pm.expect(pm.response.json().capturedMinor).to.equal(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}/capture",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}",
+                "capture"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "c1645868-a343-4e9a-a12c-754129177981",
+          "name": "Simulate capture notification",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('eventId', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'simulator queued the notification', () => pm.response.to.have.status(202));",
+                  "pm.collectionVariables.set('deliveryId', pm.response.json().deliveryId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/simulator/payment-events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "simulator",
+                "payment-events"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"type\": \"capture.succeeded\",\n  \"paymentId\": \"{{paymentId}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "6aa2bc4d-98a4-468f-9d9d-18c8aa0c0e19",
+          "name": "Wait until payment is captured",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.waitForPayment(pm, 'captured');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "0c8ef510-e32f-46f2-a23b-e3f051c3e962",
+          "name": "Request a partial refund",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const { total, partial } = helpers.money(pm);",
+                  "pm.collectionVariables.set('refundAmountMinor', partial);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'refund was accepted and is pending', () => {",
+                  "  pm.response.to.have.status(202);",
+                  "  pm.expect(pm.response.json().status).to.equal('pending');",
+                  "});",
+                  "pm.collectionVariables.set('refundId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}/refunds",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}",
+                "refunds"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"amountMinor\": {{refundAmountMinor}} }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "8253eecd-33e4-4557-9587-74d1f479fd9a",
+          "name": "Simulate refund notification",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('eventId', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'simulator queued the notification', () => pm.response.to.have.status(202));",
+                  "pm.collectionVariables.set('deliveryId', pm.response.json().deliveryId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/simulator/payment-events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "simulator",
+                "payment-events"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"eventId\": \"{{eventId}}\", \"type\": \"refund.succeeded\", \"paymentId\": \"{{paymentId}}\", \"refundId\": \"{{refundId}}\" }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "cde30de3-b750-45b9-88e8-5d5e62973d83",
+          "name": "Wait until payment is partially_refunded",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.waitForPayment(pm, 'partially_refunded');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "8a3a8d77-f27d-48d6-a974-c622b53299ab",
+          "name": "Send the same refund result under a new event ID",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('eventId', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'simulator queued the notification', () => pm.response.to.have.status(202));",
+                  "pm.collectionVariables.set('deliveryId', pm.response.json().deliveryId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/simulator/payment-events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "simulator",
+                "payment-events"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"eventId\": \"{{eventId}}\", \"type\": \"refund.succeeded\", \"paymentId\": \"{{paymentId}}\", \"refundId\": \"{{refundId}}\" }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "80acb1e7-82d5-44e2-b087-b09f58ff1308",
+          "name": "Wait for the second notification to be rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.waitForDelivery(pm, 'rejected', 'refund_not_pending');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/simulator/deliveries/{{deliveryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "simulator",
+                "deliveries",
+                "{{deliveryId}}"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "3cea1d74-1c62-4b80-a5c0-4b28c16d5ac3",
+          "name": "Check money was refunded once",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const { total, partial } = helpers.money(pm);",
+                  "helpers.expectPayment(pm, { status: 'partially_refunded', refundedMinor: partial, refundableMinor: total - partial, pendingRefundMinor: 0 });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "066f4858-02be-427f-b7ed-975d329b7fb2",
+          "name": "Check one refund settlement in the history",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('The history shows exactly one settled refund', () => {",
+                  "  const settled = pm.response.json().entries.filter((entry) => entry.type === 'refund_settled');",
+                  "  pm.expect(settled).to.have.lengthOf(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}",
+                "history"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "20 A rejected notification can still be applied when sent again",
+      "description": "A notification that arrives too early changes nothing. If the provider sends it again once the payment is ready, it must take effect, and not be thrown away as a duplicate.",
+      "item": [
+        {
+          "id": "2732236f-ad9a-44b4-960d-4cf0fcd5944d",
+          "name": "Setup: register customer",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "['token', 'orderId', 'orderTotalMinor', 'paymentId', 'refundId', 'eventId', 'deliveryId', 'pollAttempt']",
+                  "  .forEach((key) => pm.collectionVariables.unset(key));",
+                  "pm.collectionVariables.set('customerEmail', 'customer-' + pm.variables.replaceIn('{{$guid}}') + '@example.test');",
+                  "pm.collectionVariables.set('customerPassword', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'customer was created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Customer\",\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "23dbd869-2bb2-42cf-a9a1-9d1fcee26114",
+          "name": "Setup: log in",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'session was created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('token', pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "f3608353-53c0-489a-80e9-b3c85ec52b86",
+          "name": "Setup: create order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'order total is correct for ' + pm.variables.get('currency'), () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().totalMinor).to.equal(Number(pm.variables.get('expectedOrderTotalMinor')));",
+                  "});",
+                  "pm.collectionVariables.set('orderId', pm.response.json().id);",
+                  "pm.collectionVariables.set('orderTotalMinor', pm.response.json().totalMinor);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currency\": \"{{currency}}\",\n  \"items\": [\n    {\n      \"sku\": \"MAXQ-BOX-S\",\n      \"quantity\": 2\n    },\n    {\n      \"sku\": \"MAXQ-BOX-L\",\n      \"quantity\": 1\n    }\n  ]\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "5a720b73-82d7-4c99-b99e-d91a9d1b52cd",
+          "name": "Setup: authorise payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "});",
+                  "pm.collectionVariables.set('paymentId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"paymentMethod\": \"pm_success\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "06801e5f-17de-4125-ba8d-059f503b1489",
+          "name": "Send a capture notification before capture was requested",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('eventId', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'simulator queued the notification', () => pm.response.to.have.status(202));",
+                  "pm.collectionVariables.set('deliveryId', pm.response.json().deliveryId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/simulator/payment-events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "simulator",
+                "payment-events"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"eventId\": \"{{eventId}}\", \"type\": \"capture.succeeded\", \"paymentId\": \"{{paymentId}}\" }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "55b4366a-6ea2-4030-9d97-aa6806d08c26",
+          "name": "Wait for the early notification to be rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.waitForDelivery(pm, 'rejected', 'invalid_transition');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/simulator/deliveries/{{deliveryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "simulator",
+                "deliveries",
+                "{{deliveryId}}"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "9510a867-d04a-42d3-8541-79ef97feb64a",
+          "name": "Request capture",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'capture was accepted but not yet settled', () => {",
+                  "  pm.response.to.have.status(202);",
+                  "  pm.expect(pm.response.json().status).to.equal('capture_pending');",
+                  "  pm.expect(pm.response.json().capturedMinor).to.equal(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}/capture",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}",
+                "capture"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "f37a2571-2109-479a-ad7c-7b6bc2a4972a",
+          "name": "Send the same notification again",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'simulator queued the notification', () => pm.response.to.have.status(202));",
+                  "pm.collectionVariables.set('deliveryId', pm.response.json().deliveryId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/simulator/payment-events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "simulator",
+                "payment-events"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"eventId\": \"{{eventId}}\", \"type\": \"capture.succeeded\", \"paymentId\": \"{{paymentId}}\" }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "cd548666-90cc-4d0c-8097-5237b2b306b9",
+          "name": "Wait for the notification to be applied",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.waitForDelivery(pm, 'applied');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/simulator/deliveries/{{deliveryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "simulator",
+                "deliveries",
+                "{{deliveryId}}"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "ed1be16c-44b3-4661-b1ae-ab30b2a257fd",
+          "name": "Wait until payment is captured",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.waitForPayment(pm, 'captured');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "54d160d0-2f04-42fd-8742-bd0285970bd4",
+          "name": "Check money was captured",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const { total, partial } = helpers.money(pm);",
+                  "helpers.expectPayment(pm, { status: 'captured', capturedMinor: total, refundableMinor: total });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "21 Invalid orders are rejected",
+      "description": "Bad input must give a clear 400, never a server error and never an order with a wrong total.",
+      "item": [
+        {
+          "id": "3dea749b-92d4-40f0-bb71-01099a489814",
+          "name": "Setup: register customer",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "['token', 'orderId', 'orderTotalMinor', 'paymentId', 'refundId', 'eventId', 'deliveryId', 'pollAttempt']",
+                  "  .forEach((key) => pm.collectionVariables.unset(key));",
+                  "pm.collectionVariables.set('customerEmail', 'customer-' + pm.variables.replaceIn('{{$guid}}') + '@example.test');",
+                  "pm.collectionVariables.set('customerPassword', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'customer was created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Customer\",\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "2492b420-4d58-4253-bc55-c98cbca0a1c3",
+          "name": "Setup: log in",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'session was created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('token', pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "bb168b1b-b1fe-4f38-8456-fb295656fa9b",
+          "name": "Order with a null item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 400, 'validation_failed');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"currency\": \"{{currency}}\", \"items\": [null] }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "7ba9d65b-7b0e-4a6c-8d29-cedd14ce57d4",
+          "name": "Order with an item that is not an object",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 400, 'validation_failed');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"currency\": \"{{currency}}\", \"items\": [5] }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "3a9d5272-bae3-4ac9-b6cb-5ba3742b006f",
+          "name": "Order with an unknown SKU",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 400, 'validation_failed');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"currency\": \"{{currency}}\", \"items\": [ { \"sku\": \"MAXQ-BOX-XL\", \"quantity\": 1 } ] }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "ec31ebba-99c5-4f68-8cfe-0f9efc13f921",
+          "name": "Order with quantity zero",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 400, 'validation_failed');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"currency\": \"{{currency}}\", \"items\": [ { \"sku\": \"MAXQ-BOX-S\", \"quantity\": 0 } ] }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "ba76b2cf-1b4d-4fd3-98f1-a717cb6591bf",
+          "name": "Order with a negative quantity",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 400, 'validation_failed');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"currency\": \"{{currency}}\", \"items\": [ { \"sku\": \"MAXQ-BOX-S\", \"quantity\": -2 } ] }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "86c64b16-2526-443e-a939-879961333d9a",
+          "name": "Order with a fractional quantity",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 400, 'validation_failed');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"currency\": \"{{currency}}\", \"items\": [ { \"sku\": \"MAXQ-BOX-S\", \"quantity\": 1.5 } ] }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "84dda08b-a3e7-4736-aff0-b14bd32f3635",
+          "name": "Order with a text quantity",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 400, 'validation_failed');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"currency\": \"{{currency}}\", \"items\": [ { \"sku\": \"MAXQ-BOX-S\", \"quantity\": \"2\" } ] }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "0de72b9f-704b-434c-a913-857d315c9e95",
+          "name": "Order with a quantity above the limit",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 400, 'validation_failed');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"currency\": \"{{currency}}\", \"items\": [ { \"sku\": \"MAXQ-BOX-S\", \"quantity\": 1001 } ] }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "1bd86463-bc7a-4a63-b392-af8f09368b3e",
+          "name": "Order with an enormous quantity",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 400, 'validation_failed');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"currency\": \"{{currency}}\", \"items\": [ { \"sku\": \"MAXQ-BOX-L\", \"quantity\": 1e308 } ] }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "e0bdfc86-3618-4821-8dc5-e6c9dc918e39",
+          "name": "Order with no items",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 400, 'validation_failed');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"currency\": \"{{currency}}\", \"items\": [] }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "632c3207-de36-49f0-ba41-2c6569185573",
+          "name": "Order whose items are not a list",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 400, 'validation_failed');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"currency\": \"{{currency}}\", \"items\": \"abc\" }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "65245da5-f2ac-464a-b83c-6425493b2198",
+          "name": "Order with too many lines",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('manyItems', JSON.stringify(Array.from({ length: 51 }, () => ({ sku: 'MAXQ-BOX-S', quantity: 1 }))));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 400, 'validation_failed');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"currency\": \"{{currency}}\", \"items\": {{manyItems}} }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "53d0ff36-58aa-4c4d-a59f-6daeadaa601e",
+          "name": "Order in an unsupported currency",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 400, 'validation_failed');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"currency\": \"USD\", \"items\": [ { \"sku\": \"MAXQ-BOX-S\", \"quantity\": 1 } ] }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "c1cbddee-a69f-4ea0-9f8c-1135bfd7461f",
+          "name": "Order with no currency",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 400, 'validation_failed');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"items\": [ { \"sku\": \"MAXQ-BOX-S\", \"quantity\": 1 } ] }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "b66650cf-35ed-45e2-b260-dbe540f55974",
+          "name": "Order that is not valid JSON",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 400, 'invalid_json');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"currency\": "
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "1369985d-f92d-437d-8c21-346b557bce8f",
+          "name": "Check an order at the quantity limit is accepted",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('The largest allowed order is accepted with the right total', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  const unit = { GBP: 450, EUR: 520 }[pm.variables.get('currency')];",
+                  "  pm.expect(pm.response.json().totalMinor).to.equal(unit * 1000);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"currency\": \"{{currency}}\", \"items\": [ { \"sku\": \"MAXQ-BOX-S\", \"quantity\": 1000 } ] }"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "22 Registration and login rules",
+      "description": "One account per email address (case does not matter), a minimum password length, and the same error for every kind of failed login.",
+      "item": [
+        {
+          "id": "28488bf3-ce9e-48be-9610-596a72bbd6ee",
+          "name": "Setup: register customer",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "['token', 'orderId', 'orderTotalMinor', 'paymentId', 'refundId', 'eventId', 'deliveryId', 'pollAttempt']",
+                  "  .forEach((key) => pm.collectionVariables.unset(key));",
+                  "pm.collectionVariables.set('customerEmail', 'customer-' + pm.variables.replaceIn('{{$guid}}') + '@example.test');",
+                  "pm.collectionVariables.set('customerPassword', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'customer was created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Customer\",\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "5a233102-ab24-43ec-9bd8-f84f8fc39386",
+          "name": "Register the same email again",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Customer\",\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 409, 'email_taken');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "090c0f78-2e37-42f0-b35d-282e9bc17d0f",
+          "name": "Register the same email in a different case",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Customer\",\n  \"email\": \"{{upperEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('upperEmail', pm.collectionVariables.get('customerEmail').toUpperCase());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 409, 'email_taken');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "e5c40985-8515-4761-be85-4b8a21cffe8b",
+          "name": "Register with a password that is too short",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Customer\",\n  \"email\": \"short-{{$guid}}@example.test\",\n  \"password\": \"short\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 400, 'validation_failed');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "39bd4d16-57a9-43f8-97bc-539c1da736d4",
+          "name": "Register with no name",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"noname-{{$guid}}@example.test\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 400, 'validation_failed');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "b1cbf736-664f-49a6-9430-ba990301ba04",
+          "name": "Log in with the email in a different case",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('upperEmail', pm.collectionVariables.get('customerEmail').toUpperCase());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('The email is matched without regard to case', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().token).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{upperEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "37dd2217-1afb-4a88-a94e-599b3e84dd41",
+          "name": "Log in with a wrong password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 401, 'invalid_credentials');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"wrong-password\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "01f8de64-864b-439e-9808-cf26bafc5fe4",
+          "name": "Log in with an unknown email",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 401, 'invalid_credentials');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nobody-{{$guid}}@example.test\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "ae7390d0-c8e9-4167-8422-1cf6e394e24a",
+          "name": "Log in with a password that is not text",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 401, 'invalid_credentials');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": 12345678\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "23 A customer cannot pay for someone else's order",
+      "description": "Orders belong to the customer who created them. Another customer gets the same \"not found\" as for an order that does not exist.",
+      "item": [
+        {
+          "id": "53dc4a5a-6f2e-4640-814e-d9df48cab44e",
+          "name": "Setup: register customer",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "['token', 'orderId', 'orderTotalMinor', 'paymentId', 'refundId', 'eventId', 'deliveryId', 'pollAttempt']",
+                  "  .forEach((key) => pm.collectionVariables.unset(key));",
+                  "pm.collectionVariables.set('customerEmail', 'customer-' + pm.variables.replaceIn('{{$guid}}') + '@example.test');",
+                  "pm.collectionVariables.set('customerPassword', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'customer was created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Customer\",\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "a929d1e0-48a6-403c-994f-0b34254e19e4",
+          "name": "Setup: log in",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'session was created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('token', pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "54b15cca-4fb0-4048-8418-d48be6ed4246",
+          "name": "Setup: create order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'order total is correct for ' + pm.variables.get('currency'), () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().totalMinor).to.equal(Number(pm.variables.get('expectedOrderTotalMinor')));",
+                  "});",
+                  "pm.collectionVariables.set('orderId', pm.response.json().id);",
+                  "pm.collectionVariables.set('orderTotalMinor', pm.response.json().totalMinor);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currency\": \"{{currency}}\",\n  \"items\": [\n    {\n      \"sku\": \"MAXQ-BOX-S\",\n      \"quantity\": 2\n    },\n    {\n      \"sku\": \"MAXQ-BOX-L\",\n      \"quantity\": 1\n    }\n  ]\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "8608154a-23ad-431a-bc1f-b59c84824912",
+          "name": "Setup: register a second customer",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('otherEmail', 'other-' + pm.variables.replaceIn('{{$guid}}') + '@example.test');",
+                  "pm.collectionVariables.set('otherPassword', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'second customer was created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Other Customer\",\n  \"email\": \"{{otherEmail}}\",\n  \"password\": \"{{otherPassword}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "58d027f7-9da2-4fac-87e0-c0eb6c91d5f1",
+          "name": "Setup: log in as the second customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'second session was created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('otherToken', pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{otherEmail}}\",\n  \"password\": \"{{otherPassword}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "1cccaf14-3fd9-494a-b244-5a9a1d194c89",
+          "name": "Pay for the other customer's order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 404, 'not_found');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"orderId\": \"{{orderId}}\", \"paymentMethod\": \"pm_success\" }"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "7e012724-99a7-4829-8882-f2aefbbf11b2",
+          "name": "Check the owner can still pay for the order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('The order was not used up by the failed attempt', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"orderId\": \"{{orderId}}\", \"paymentMethod\": \"pm_success\" }"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "24 Another customer's payment looks the same as one that does not exist",
+      "description": "If the two answers differed, anyone could use the API to find out which payment IDs are real.",
+      "item": [
+        {
+          "id": "0fa98778-29fb-4196-92fd-64ba3ffbc728",
+          "name": "Setup: register customer",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "['token', 'orderId', 'orderTotalMinor', 'paymentId', 'refundId', 'eventId', 'deliveryId', 'pollAttempt']",
+                  "  .forEach((key) => pm.collectionVariables.unset(key));",
+                  "pm.collectionVariables.set('customerEmail', 'customer-' + pm.variables.replaceIn('{{$guid}}') + '@example.test');",
+                  "pm.collectionVariables.set('customerPassword', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'customer was created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Customer\",\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "f2f6796f-8756-4d8a-a9ae-5281d7af6fab",
+          "name": "Setup: log in",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'session was created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('token', pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "b65988bb-709a-4024-bf17-430b2c6af8d4",
+          "name": "Setup: create order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'order total is correct for ' + pm.variables.get('currency'), () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().totalMinor).to.equal(Number(pm.variables.get('expectedOrderTotalMinor')));",
+                  "});",
+                  "pm.collectionVariables.set('orderId', pm.response.json().id);",
+                  "pm.collectionVariables.set('orderTotalMinor', pm.response.json().totalMinor);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currency\": \"{{currency}}\",\n  \"items\": [\n    {\n      \"sku\": \"MAXQ-BOX-S\",\n      \"quantity\": 2\n    },\n    {\n      \"sku\": \"MAXQ-BOX-L\",\n      \"quantity\": 1\n    }\n  ]\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "049b4344-3d36-4558-88ef-41f3bf6480e2",
+          "name": "Setup: authorise payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "});",
+                  "pm.collectionVariables.set('paymentId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"paymentMethod\": \"pm_success\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "7afb1248-ea8e-418a-81f1-6dfc8e44c56c",
+          "name": "Setup: register a second customer",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('otherEmail', 'other-' + pm.variables.replaceIn('{{$guid}}') + '@example.test');",
+                  "pm.collectionVariables.set('otherPassword', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'second customer was created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Other Customer\",\n  \"email\": \"{{otherEmail}}\",\n  \"password\": \"{{otherPassword}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "5304cc49-3708-490b-8b1e-6de1a2f3da6f",
+          "name": "Setup: log in as the second customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.guard(pm, 'second session was created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('otherToken', pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{otherEmail}}\",\n  \"password\": \"{{otherPassword}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "eb577e66-edce-47e7-8d7a-722002196a78",
+          "name": "Read the payment as the other customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 404, 'not_found');",
+                  "pm.collectionVariables.set('strangerBody', pm.response.text());"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "e4c1d8bb-0ea0-4fca-9472-80424d9bf319",
+          "name": "Read a payment that does not exist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "helpers.expectError(pm, 404, 'not_found');",
+                  "pm.test('The answer is identical to the one for another customer\\'s payment', () => {",
+                  "  pm.expect(pm.response.text()).to.equal(pm.collectionVariables.get('strangerBody'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/00000000-0000-4000-8000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "00000000-0000-4000-8000-000000000000"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherToken}}",
+                  "type": "string"
+                }
               ]
             }
           },

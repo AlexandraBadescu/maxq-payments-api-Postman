@@ -7,12 +7,14 @@
     "node": ">=20"
   },
   "scripts": {
-    "start": "node src/server.js",
+    "start": "node src/server.js --simulator",
     "test": "node scripts/run-tests.js",
     "test:eur": "node scripts/run-tests.js --env local-eur",
     "test:isolation": "node scripts/check-isolation.js",
     "test:defects": "node scripts/check-defects.js",
-    "test:guard": "node scripts/check-guard.js"
+    "test:guard": "node scripts/check-guard.js",
+    "test:repeat": "node scripts/check-repeat.js",
+    "audit": "npm audit --omit=dev --audit-level=high"
   },
   "dependencies": {
     "express": "5.3.0"

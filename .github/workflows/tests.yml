@@ -7,10 +7,31 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same branch cancels the run that is still going.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  dependency-audit:
+    name: Dependency audit (service dependencies)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Newman, the test runner, has known advisories in its own dependencies (see the
+      # README). The service itself must have none, so the gate covers production dependencies.
+      - run: npm run audit
+
   suite:
     name: Suite (${{ matrix.env }})
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -32,6 +53,7 @@ jobs:
   checks-on-the-tests:
     name: Checks on the tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -41,4 +63,8 @@ jobs:
       - run: npm ci
       - run: npm run test:isolation
       - run: npm run test:guard
+      - run: npm run test:repeat
       - run: npm run test:defects
+      # The results page is generated, so it must match what the committed tests produce.
+      # If this fails, run `npm run test:defects` and commit docs/defect-results.md.
+      - run: git diff --exit-code docs/defect-results.md

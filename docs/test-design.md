@@ -14,7 +14,14 @@
 | Declined payment treated as paid | Goods sent without payment | 13 |
 | Order paid twice | Customer charged twice | 14 |
 | Someone reaches a payment without logging in | Security incident | 15 |
-| A customer reaches someone else's payment | Security and privacy incident | 16 |
+| A customer reaches someone else's payment | Security and privacy incident | 16, 24 |
+| A customer pays for someone else's order | Security incident, and the real owner is locked out | 23 |
+| Payment captured twice | Customer charged twice | 17 |
+| Refund on a payment with nothing left to refund | Confusing error, or money returned twice | 18 |
+| Same refund settled twice under a new event ID | Customer refunded twice | 19 |
+| An early notification is thrown away for good | Payment stuck until it times out | 20 |
+| Bad order input crashes the service, or gives a wrong total | Server errors, orders with no price | 21 |
+| Duplicate or weak accounts, login that reveals which emails exist | Account confusion, privacy | 22 |
 | Tests run against the wrong system | Real data changed by a test | [Guard](#the-environment-guard) |
 
 ## Decisions, and what they cost
@@ -45,6 +52,20 @@ So scenarios 07 and 08 wait for the service to report the outcome `duplicate`, a
 A payment can say `captured` and still hold the wrong amount. Payment checks compare the status and balances, and scenario 01 also compares the amounts in the history with the money that moved.
 
 I don't check the total number of history entries, because the rules don't promise one. A check like that would fail on harmless changes.
+
+### Check that a refused request changed nothing
+
+A rejected request can still do damage: a refund that is refused with a 422 but has already reserved some of the balance, or a capture refused with a 401 that went ahead anyway. A status code alone wouldn't show it. So the scenarios that expect a refusal (03, 04, 05, 13, 16, 17, 18) read the payment afterwards and check that the balances and status are exactly what they were.
+
+### Test the business key as well as the event ID
+
+A repeated notification is usually caught by its event ID (scenarios 07 and 08). A provider can also send the same result under a new ID, so scenario 19 does that and checks the refund still settles once.
+
+The same area has a second decision. An early notification that is rejected is not remembered, so if the provider sends it again once the payment is ready, it applies (scenario 20). The first version remembered every event it saw, including rejected ones. That made a notification that arrived a moment early impossible to recover.
+
+### Bad input must never cause a server error
+
+Scenario 21 sends every kind of invalid order I could think of: a `null` item, quantities that are zero, negative, fractional, text, too large or beyond what a number can hold, and bodies that aren't valid JSON. Each must give a 400. The first version of the service crashed on a `null` item, and accepted a quantity so large that the order total came back as `null`.
 
 ### Stop a scenario at the first real problem
 
@@ -90,6 +111,8 @@ That check found a bug in my first version. The guard did block every request, b
 
 A passing suite only means something if it would fail when the product is wrong. `npm run test:defects` starts the service with one deliberate bug at a time and checks that the right scenario fails. The results are in [defect-results.md](defect-results.md).
 
+There's a trap in that, and I fell into it: I wrote the first 14 bugs alongside the tests, so of course the tests caught them. When someone else seeded 10 bugs of their own, this suite caught 3 of them and the Playwright version caught 1. The missing ones are now scenarios 17 to 24 and a fix to 14, and all of those bugs are in the list. The lesson I took from it is that the score against bugs I chose is a floor on my confidence, not a measure of it. I'd want a colleague to keep adding bugs I didn't think of.
+
 ## What I'd add next
 
 - 3DS challenges and soft declines, where the payment pauses for cardholder verification and the test needs to handle the redirect and the delayed outcome
@@ -100,4 +123,5 @@ A passing suite only means something if it would fail when the product is wrong.
 - An OpenAPI description, checked against the responses
 - Consumer-driven contract tests with Pact
 - An `Idempotency-Key` on refund requests, so a retried request can't create a second refund
+- A failed refund that is reported twice under different event IDs, and a refund result that arrives after a failure for the same refund
 - Performance testing, which this project doesn't cover
