@@ -15,15 +15,17 @@ async function main() {
     requestsReceived += 1;
     app(req, res);
   });
-  await new Promise((resolve) => server.listen(0, '0.0.0.0', resolve));
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 
-  // 127.0.0.2 reaches this machine, but it is not on the collection's list.
+  // The temporary service listens on loopback only. "127.1" is another spelling of
+  // 127.0.0.1 that every platform resolves, but it is not on the collection's list.
+  // (127.0.0.2 would also work on Linux, but macOS has no such loopback address by default.)
   const summary = await new Promise((resolve, reject) => {
     newman.run(
       {
         collection: path.join(ROOT, 'collections', 'payments.postman_collection.json'),
         environment: path.join(ROOT, 'environments', 'local-gbp.postman_environment.json'),
-        envVar: [{ key: 'baseUrl', value: `http://127.0.0.2:${server.address().port}` }],
+        envVar: [{ key: 'baseUrl', value: `http://127.1:${server.address().port}` }],
       },
       (error, result) => (error ? reject(error) : resolve(result)),
     );

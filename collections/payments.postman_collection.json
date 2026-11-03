@@ -157,9 +157,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "helpers.guard(pm, 'payment was authorised for this order, amount and currency', () => {",
                   "  pm.response.to.have.status(201);",
-                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "  const payment = pm.response.json();",
+                  "  pm.expect(payment.status).to.equal('authorised');",
+                  "  pm.expect(payment.orderId).to.equal(pm.collectionVariables.get('orderId'));",
+                  "  pm.expect(payment.amountMinor).to.equal(Number(pm.collectionVariables.get('orderTotalMinor')));",
+                  "  pm.expect(payment.currency).to.equal(pm.variables.get('currency'));",
                   "});",
                   "pm.collectionVariables.set('paymentId', pm.response.json().id);"
                 ]
@@ -733,9 +737,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "helpers.guard(pm, 'payment was authorised for this order, amount and currency', () => {",
                   "  pm.response.to.have.status(201);",
-                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "  const payment = pm.response.json();",
+                  "  pm.expect(payment.status).to.equal('authorised');",
+                  "  pm.expect(payment.orderId).to.equal(pm.collectionVariables.get('orderId'));",
+                  "  pm.expect(payment.amountMinor).to.equal(Number(pm.collectionVariables.get('orderTotalMinor')));",
+                  "  pm.expect(payment.currency).to.equal(pm.variables.get('currency'));",
                   "});",
                   "pm.collectionVariables.set('paymentId', pm.response.json().id);"
                 ]
@@ -1341,9 +1349,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "helpers.guard(pm, 'payment was authorised for this order, amount and currency', () => {",
                   "  pm.response.to.have.status(201);",
-                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "  const payment = pm.response.json();",
+                  "  pm.expect(payment.status).to.equal('authorised');",
+                  "  pm.expect(payment.orderId).to.equal(pm.collectionVariables.get('orderId'));",
+                  "  pm.expect(payment.amountMinor).to.equal(Number(pm.collectionVariables.get('orderTotalMinor')));",
+                  "  pm.expect(payment.currency).to.equal(pm.variables.get('currency'));",
                   "});",
                   "pm.collectionVariables.set('paymentId', pm.response.json().id);"
                 ]
@@ -1828,9 +1840,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "helpers.guard(pm, 'payment was authorised for this order, amount and currency', () => {",
                   "  pm.response.to.have.status(201);",
-                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "  const payment = pm.response.json();",
+                  "  pm.expect(payment.status).to.equal('authorised');",
+                  "  pm.expect(payment.orderId).to.equal(pm.collectionVariables.get('orderId'));",
+                  "  pm.expect(payment.amountMinor).to.equal(Number(pm.collectionVariables.get('orderTotalMinor')));",
+                  "  pm.expect(payment.currency).to.equal(pm.variables.get('currency'));",
                   "});",
                   "pm.collectionVariables.set('paymentId', pm.response.json().id);"
                 ]
@@ -2085,9 +2101,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "helpers.guard(pm, 'payment was authorised for this order, amount and currency', () => {",
                   "  pm.response.to.have.status(201);",
-                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "  const payment = pm.response.json();",
+                  "  pm.expect(payment.status).to.equal('authorised');",
+                  "  pm.expect(payment.orderId).to.equal(pm.collectionVariables.get('orderId'));",
+                  "  pm.expect(payment.amountMinor).to.equal(Number(pm.collectionVariables.get('orderTotalMinor')));",
+                  "  pm.expect(payment.currency).to.equal(pm.variables.get('currency'));",
                   "});",
                   "pm.collectionVariables.set('paymentId', pm.response.json().id);"
                 ]
@@ -2579,9 +2599,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "helpers.guard(pm, 'payment was authorised for this order, amount and currency', () => {",
                   "  pm.response.to.have.status(201);",
-                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "  const payment = pm.response.json();",
+                  "  pm.expect(payment.status).to.equal('authorised');",
+                  "  pm.expect(payment.orderId).to.equal(pm.collectionVariables.get('orderId'));",
+                  "  pm.expect(payment.amountMinor).to.equal(Number(pm.collectionVariables.get('orderTotalMinor')));",
+                  "  pm.expect(payment.currency).to.equal(pm.variables.get('currency'));",
                   "});",
                   "pm.collectionVariables.set('paymentId', pm.response.json().id);"
                 ]
@@ -3054,9 +3078,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "helpers.guard(pm, 'payment was authorised for this order, amount and currency', () => {",
                   "  pm.response.to.have.status(201);",
-                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "  const payment = pm.response.json();",
+                  "  pm.expect(payment.status).to.equal('authorised');",
+                  "  pm.expect(payment.orderId).to.equal(pm.collectionVariables.get('orderId'));",
+                  "  pm.expect(payment.amountMinor).to.equal(Number(pm.collectionVariables.get('orderTotalMinor')));",
+                  "  pm.expect(payment.currency).to.equal(pm.variables.get('currency'));",
                   "});",
                   "pm.collectionVariables.set('paymentId', pm.response.json().id);"
                 ]
@@ -3499,9 +3527,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "helpers.guard(pm, 'payment was authorised for this order, amount and currency', () => {",
                   "  pm.response.to.have.status(201);",
-                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "  const payment = pm.response.json();",
+                  "  pm.expect(payment.status).to.equal('authorised');",
+                  "  pm.expect(payment.orderId).to.equal(pm.collectionVariables.get('orderId'));",
+                  "  pm.expect(payment.amountMinor).to.equal(Number(pm.collectionVariables.get('orderTotalMinor')));",
+                  "  pm.expect(payment.currency).to.equal(pm.variables.get('currency'));",
                   "});",
                   "pm.collectionVariables.set('paymentId', pm.response.json().id);"
                 ]
@@ -4081,9 +4113,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "helpers.guard(pm, 'payment was authorised for this order, amount and currency', () => {",
                   "  pm.response.to.have.status(201);",
-                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "  const payment = pm.response.json();",
+                  "  pm.expect(payment.status).to.equal('authorised');",
+                  "  pm.expect(payment.orderId).to.equal(pm.collectionVariables.get('orderId'));",
+                  "  pm.expect(payment.amountMinor).to.equal(Number(pm.collectionVariables.get('orderTotalMinor')));",
+                  "  pm.expect(payment.currency).to.equal(pm.variables.get('currency'));",
                   "});",
                   "pm.collectionVariables.set('paymentId', pm.response.json().id);"
                 ]
@@ -4501,9 +4537,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "helpers.guard(pm, 'payment was authorised for this order, amount and currency', () => {",
                   "  pm.response.to.have.status(201);",
-                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "  const payment = pm.response.json();",
+                  "  pm.expect(payment.status).to.equal('authorised');",
+                  "  pm.expect(payment.orderId).to.equal(pm.collectionVariables.get('orderId'));",
+                  "  pm.expect(payment.amountMinor).to.equal(Number(pm.collectionVariables.get('orderTotalMinor')));",
+                  "  pm.expect(payment.currency).to.equal(pm.variables.get('currency'));",
                   "});",
                   "pm.collectionVariables.set('paymentId', pm.response.json().id);"
                 ]
@@ -4866,9 +4906,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "helpers.guard(pm, 'payment was authorised for this order, amount and currency', () => {",
                   "  pm.response.to.have.status(201);",
-                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "  const payment = pm.response.json();",
+                  "  pm.expect(payment.status).to.equal('authorised');",
+                  "  pm.expect(payment.orderId).to.equal(pm.collectionVariables.get('orderId'));",
+                  "  pm.expect(payment.amountMinor).to.equal(Number(pm.collectionVariables.get('orderTotalMinor')));",
+                  "  pm.expect(payment.currency).to.equal(pm.variables.get('currency'));",
                   "});",
                   "pm.collectionVariables.set('paymentId', pm.response.json().id);"
                 ]
@@ -5188,9 +5232,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "helpers.guard(pm, 'payment was authorised for this order, amount and currency', () => {",
                   "  pm.response.to.have.status(201);",
-                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "  const payment = pm.response.json();",
+                  "  pm.expect(payment.status).to.equal('authorised');",
+                  "  pm.expect(payment.orderId).to.equal(pm.collectionVariables.get('orderId'));",
+                  "  pm.expect(payment.amountMinor).to.equal(Number(pm.collectionVariables.get('orderTotalMinor')));",
+                  "  pm.expect(payment.currency).to.equal(pm.variables.get('currency'));",
                   "});",
                   "pm.collectionVariables.set('paymentId', pm.response.json().id);"
                 ]
@@ -5800,9 +5848,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "helpers.guard(pm, 'payment was authorised for this order, amount and currency', () => {",
                   "  pm.response.to.have.status(201);",
-                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "  const payment = pm.response.json();",
+                  "  pm.expect(payment.status).to.equal('authorised');",
+                  "  pm.expect(payment.orderId).to.equal(pm.collectionVariables.get('orderId'));",
+                  "  pm.expect(payment.amountMinor).to.equal(Number(pm.collectionVariables.get('orderTotalMinor')));",
+                  "  pm.expect(payment.currency).to.equal(pm.variables.get('currency'));",
                   "});",
                   "pm.collectionVariables.set('paymentId', pm.response.json().id);"
                 ]
@@ -6151,9 +6203,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "helpers.guard(pm, 'payment was authorised for this order, amount and currency', () => {",
                   "  pm.response.to.have.status(201);",
-                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "  const payment = pm.response.json();",
+                  "  pm.expect(payment.status).to.equal('authorised');",
+                  "  pm.expect(payment.orderId).to.equal(pm.collectionVariables.get('orderId'));",
+                  "  pm.expect(payment.amountMinor).to.equal(Number(pm.collectionVariables.get('orderTotalMinor')));",
+                  "  pm.expect(payment.currency).to.equal(pm.variables.get('currency'));",
                   "});",
                   "pm.collectionVariables.set('paymentId', pm.response.json().id);"
                 ]
@@ -6792,9 +6848,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "helpers.guard(pm, 'payment was authorised for this order, amount and currency', () => {",
                   "  pm.response.to.have.status(201);",
-                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "  const payment = pm.response.json();",
+                  "  pm.expect(payment.status).to.equal('authorised');",
+                  "  pm.expect(payment.orderId).to.equal(pm.collectionVariables.get('orderId'));",
+                  "  pm.expect(payment.amountMinor).to.equal(Number(pm.collectionVariables.get('orderTotalMinor')));",
+                  "  pm.expect(payment.currency).to.equal(pm.variables.get('currency'));",
                   "});",
                   "pm.collectionVariables.set('paymentId', pm.response.json().id);"
                 ]
@@ -7391,9 +7451,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "helpers.guard(pm, 'payment was authorised for this order, amount and currency', () => {",
                   "  pm.response.to.have.status(201);",
-                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "  const payment = pm.response.json();",
+                  "  pm.expect(payment.status).to.equal('authorised');",
+                  "  pm.expect(payment.orderId).to.equal(pm.collectionVariables.get('orderId'));",
+                  "  pm.expect(payment.amountMinor).to.equal(Number(pm.collectionVariables.get('orderTotalMinor')));",
+                  "  pm.expect(payment.currency).to.equal(pm.variables.get('currency'));",
                   "});",
                   "pm.collectionVariables.set('paymentId', pm.response.json().id);"
                 ]
@@ -7821,9 +7885,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "helpers.guard(pm, 'payment was authorised for this order, amount and currency', () => {",
                   "  pm.response.to.have.status(201);",
-                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "  const payment = pm.response.json();",
+                  "  pm.expect(payment.status).to.equal('authorised');",
+                  "  pm.expect(payment.orderId).to.equal(pm.collectionVariables.get('orderId'));",
+                  "  pm.expect(payment.amountMinor).to.equal(Number(pm.collectionVariables.get('orderTotalMinor')));",
+                  "  pm.expect(payment.currency).to.equal(pm.variables.get('currency'));",
                   "});",
                   "pm.collectionVariables.set('paymentId', pm.response.json().id);"
                 ]
@@ -8331,9 +8399,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "helpers.guard(pm, 'payment was authorised for this order, amount and currency', () => {",
                   "  pm.response.to.have.status(201);",
-                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "  const payment = pm.response.json();",
+                  "  pm.expect(payment.status).to.equal('authorised');",
+                  "  pm.expect(payment.orderId).to.equal(pm.collectionVariables.get('orderId'));",
+                  "  pm.expect(payment.amountMinor).to.equal(Number(pm.collectionVariables.get('orderTotalMinor')));",
+                  "  pm.expect(payment.currency).to.equal(pm.variables.get('currency'));",
                   "});",
                   "pm.collectionVariables.set('paymentId', pm.response.json().id);"
                 ]
@@ -8921,9 +8993,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "helpers.guard(pm, 'payment was authorised for this order, amount and currency', () => {",
                   "  pm.response.to.have.status(201);",
-                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "  const payment = pm.response.json();",
+                  "  pm.expect(payment.status).to.equal('authorised');",
+                  "  pm.expect(payment.orderId).to.equal(pm.collectionVariables.get('orderId'));",
+                  "  pm.expect(payment.amountMinor).to.equal(Number(pm.collectionVariables.get('orderTotalMinor')));",
+                  "  pm.expect(payment.currency).to.equal(pm.variables.get('currency'));",
                   "});",
                   "pm.collectionVariables.set('paymentId', pm.response.json().id);"
                 ]
@@ -10822,9 +10898,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "helpers.guard(pm, 'payment was authorised', () => {",
+                  "helpers.guard(pm, 'payment was authorised for this order, amount and currency', () => {",
                   "  pm.response.to.have.status(201);",
-                  "  pm.expect(pm.response.json().status).to.equal('authorised');",
+                  "  const payment = pm.response.json();",
+                  "  pm.expect(payment.status).to.equal('authorised');",
+                  "  pm.expect(payment.orderId).to.equal(pm.collectionVariables.get('orderId'));",
+                  "  pm.expect(payment.amountMinor).to.equal(Number(pm.collectionVariables.get('orderTotalMinor')));",
+                  "  pm.expect(payment.currency).to.equal(pm.variables.get('currency'));",
                   "});",
                   "pm.collectionVariables.set('paymentId', pm.response.json().id);"
                 ]
@@ -11197,7 +11277,7 @@
           "    });",
           "    if (finished) {",
           "      const delivery = pm.response.json();",
-          "      pm.test('Notification outcome is ' + expectedStatus, () => {",
+          "      helpers.guard(pm, 'Notification outcome is ' + expectedStatus, () => {",
           "        pm.expect(delivery.status).to.equal(expectedStatus);",
           "        if (expectedReason) pm.expect(delivery.reason).to.equal(expectedReason);",
           "      });",

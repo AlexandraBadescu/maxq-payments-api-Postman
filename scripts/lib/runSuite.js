@@ -32,6 +32,9 @@ async function runSuite({ env = 'local-gbp', folder, seededDefect, reporters = [
           environment: environmentFile(env),
           envVar: [{ key: 'baseUrl', value: `http://127.0.0.1:${server.address().port}` }],
           folder,
+          // A hung service should fail a request, not stall the run.
+          timeout: 120000,
+          timeoutRequest: 10000,
           reporters,
           reporter,
         },
@@ -44,15 +47,16 @@ async function runSuite({ env = 'local-gbp', folder, seededDefect, reporters = [
   }
 }
 
-/** The scenario folders in which a run had at least one failed check. */
-function failedScenarios(summary) {
-  const scenarios = new Set();
-  for (const failure of summary.run.failures) {
-    const item = failure.item ?? failure.source;
-    const parent = item?.parent?.();
-    if (parent?.name) scenarios.add(parent.name);
-  }
-  return [...scenarios];
+/** Every failed check: the scenario, the request it ran in and the check's name. */
+function failedChecks(summary) {
+  return summary.run.failures.map((failure) => {
+    const item = failure.source;
+    return {
+      scenario: item?.parent?.()?.name ?? 'unknown',
+      request: item?.name ?? 'unknown',
+      check: failure.error?.test ?? failure.error?.name ?? 'unknown',
+    };
+  });
 }
 
-module.exports = { ROOT, runSuite, listScenarios, failedScenarios };
+module.exports = { ROOT, runSuite, listScenarios, failedChecks };

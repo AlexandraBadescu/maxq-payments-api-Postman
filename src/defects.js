@@ -38,6 +38,8 @@ const DEFECTS = Object.freeze({
   'refunded-payment-refundable': 'A fully refunded payment gives a too-large error, not an invalid-state one',
   'rejected-event-consumes-id': 'A rejected event can never be applied when the provider sends it again',
   'ownership-leak-via-message': "Another customer's payment gets a different 404 message",
+  'payment-wrong-currency': 'A new payment is created in a different currency from its order',
+  'payment-wrong-order': 'A new payment is linked to a different order from the one paid for',
 });
 
 function loadDefect(name) {
